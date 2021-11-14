@@ -35,19 +35,19 @@ pub fn to_u64(arr: &[u8]) -> u64 {
 
 pub fn read_u8<R: Read>(r: &mut R) -> ::std::io::Result<u8> {
     let mut buf = [0u8; 1];
-    try!(r.read_exact(&mut buf));
+    r.read_exact(&mut buf)?;
     return Result::Ok(buf[0]);
 }
 
 pub fn read_u16<R: Read>(r: &mut R) -> ::std::io::Result<u16> {
     let mut buf = [0u8; 2];
-    try!(r.read_exact(&mut buf));
+    r.read_exact(&mut buf)?;
     return Result::Ok(to_u16(&buf));
 }
 
 pub fn read_u32<R: Read>(r: &mut R) -> ::std::io::Result<u32> {
     let mut buf = [0u8; 4];
-    try!(r.read_exact(&mut buf));
+    r.read_exact(&mut buf)?;
     return Result::Ok(to_u32(&buf));
 }
 
@@ -67,7 +67,7 @@ impl AesDecryptor {
         );
 
         let mut in_buf = Vec::new();
-        try!(inner.read_to_end(&mut in_buf));
+        inner.read_to_end(&mut in_buf)?;
         let mut out_buf = [0u8; 4096];
 
         let mut read_buffer = crypto::buffer::RefReadBuffer::new(&mut in_buf);
@@ -145,15 +145,15 @@ impl<R: Read> HashedBlockStream<R> {
 
     fn read_block(&mut self) -> ::std::io::Result<()> {
         assert!(!self.eof);
-        let index = try!(read_u32(&mut self.inner));
+        let index = read_u32(&mut self.inner)?;
         if self.index != index {
             return Result::Err(Error::new(ErrorKind::InvalidData, "Invalid block index"));
         }
         let mut expected_hash = [0u8; 32];
-        try!(self.inner.read_exact(&mut expected_hash));
-        let block_size = try!(read_u32(&mut self.inner));
+        self.inner.read_exact(&mut expected_hash)?;
+        let block_size = read_u32(&mut self.inner)?;
         let mut buf = vec![0u8; block_size as usize];
-        try!(self.inner.read_exact(&mut buf));
+        self.inner.read_exact(&mut buf)?;
 
         let mut hash = [0u8; 32];
         if block_size > 0 {
@@ -180,7 +180,7 @@ impl<R: Read> Read for HashedBlockStream<R> {
             return Result::Ok(0);
         }
         if self.buffer.len() - self.pos == 0 {
-            try!(self.read_block());
+            self.read_block()?;
         }
         let r = cmp::min(self.buffer.len() - self.pos, buf.len());
         buf[..r].copy_from_slice(&self.buffer[self.pos..self.pos + r]);
@@ -195,7 +195,7 @@ impl<R: Read> BufRead for HashedBlockStream<R> {
             return Result::Ok(&[]);
         }
         if self.buffer.len() - self.pos == 0 {
-            try!(self.read_block());
+            self.read_block()?;
         }
         return Result::Ok(&self.buffer[self.pos..]);
     }

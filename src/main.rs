@@ -8,11 +8,12 @@ extern crate sxd_document;
 
 use clap::{App, Arg};
 use cursive::traits::*;
+use cursive::view::Margins;
 use cursive::views::{
     Button, Dialog, EditView, LinearLayout, ListView, OnEventView, Panel, SelectView, TextArea,
     TextView, ViewRef,
 };
-use cursive::Cursive;
+use cursive::{Cursive, CursiveExt};
 use cursive_tree_view::{Placement, TreeView};
 use keys::Key;
 
@@ -53,8 +54,8 @@ impl DatabaseRef {
     pub fn search(&self, siv: &mut Cursive, text: &str) {
         siv.pop_layer();
 
-        let mut select: ViewRef<SelectView<TreeEntry>> = siv.find_id("select").unwrap();
-        if let Err(e) = siv.focus_id("select") {
+        let mut select: ViewRef<SelectView<TreeEntry>> = siv.find_name("select").unwrap();
+        if let Err(e) = siv.focus_name("select") {
             println!("{:?}", e);
         }
         select.clear();
@@ -89,20 +90,20 @@ impl DatabaseRef {
         }
         *self.selected_uuid.borrow_mut() = uuid.to_string();
         let entry = entry_option.unwrap();
-        siv.call_on_id("title", |edit: &mut EditView| {
+        siv.call_on_name("title", |edit: &mut EditView| {
             edit.set_content(entry.title.clone());
         });
-        siv.call_on_id("username", |edit: &mut EditView| {
+        siv.call_on_name("username", |edit: &mut EditView| {
             edit.set_content(entry.user_name.clone());
         });
-        siv.call_on_id("url", |edit: &mut EditView| {
+        siv.call_on_name("url", |edit: &mut EditView| {
             edit.set_content(entry.url.clone());
         });
-        siv.call_on_id("password", |edit: &mut EditView| {
+        siv.call_on_name("password", |edit: &mut EditView| {
             edit.set_secret(true);
             edit.set_content("password");
         });
-        siv.call_on_id("notes", |edit: &mut TextArea| {
+        siv.call_on_name("notes", |edit: &mut TextArea| {
             edit.set_content(entry.notes.clone());
         });
     }
@@ -118,7 +119,7 @@ impl DatabaseRef {
             return;
         }
         let entry = entry_option.unwrap();
-        siv.call_on_id("password", |edit: &mut EditView| {
+        siv.call_on_name("password", |edit: &mut EditView| {
             edit.set_secret(false);
             edit.set_content(String::from(&entry.password));
         });
@@ -210,7 +211,7 @@ fn main() {
     }
     let db_ref_for_submit = DatabaseRef::new(&db, &selected_uuid);
     tree_view.set_on_submit(move |siv: &mut Cursive, row: usize| {
-        let tree: ViewRef<TreeView<TreeEntry>> = siv.find_id("tree").unwrap();
+        let tree: ViewRef<TreeView<TreeEntry>> = siv.find_name("tree").unwrap();
         let selected_option = tree.borrow_item(row);
         if selected_option.map_or(true, |e| e.is_group) {
             return;
@@ -240,14 +241,14 @@ fn main() {
                                     .on_submit(move |siv: &mut Cursive, text: &str| {
                                         db_ref_for_submit.search(siv, text)
                                     })
-                                    .with_id("search"),
+                                    .with_name("search"),
                             ),
                     )
-                    .padding((10, 10, 2, 2))
+                    .padding(Margins::lrtb(10, 10, 2, 2))
                     .dismiss_button("Cancel")
                     .button("Search", move |s| {
                         let text = s
-                            .call_on_id("search", |view: &mut EditView| view.get_content())
+                            .call_on_name("search", |view: &mut EditView| view.get_content())
                             .unwrap();
                         db_ref_for_search.search(s, &text);
                     }),
@@ -265,7 +266,7 @@ fn main() {
             OnEventView::new(
                 Dialog::around(TextView::new("Quit KeePass?"))
                     .title("KeePass")
-                    .padding((10, 10, 2, 2))
+                    .padding(Margins::lrtb(10, 10, 2, 2))
                     .dismiss_button("Cancel")
                     .button("Quit", |s| s.quit()),
             )
@@ -283,7 +284,7 @@ fn main() {
                 .child(
                     LinearLayout::vertical()
                         .child(
-                            Panel::new(tree_view.with_id("tree").scrollable())
+                            Panel::new(tree_view.with_name("tree").scrollable())
                                 .title("Groups")
                                 .full_height(),
                         )
@@ -293,7 +294,7 @@ fn main() {
                                     .on_submit(move |siv, entry| {
                                         db_ref_for_select.display_entry(siv, &entry.uuid);
                                     })
-                                    .with_id("select")
+                                    .with_name("select")
                                     .scrollable(),
                             )
                             .title("Search")
@@ -302,9 +303,9 @@ fn main() {
                 )
                 .child(Panel::new(
                     ListView::new()
-                        .child("Title", EditView::new().disabled().with_id("title"))
-                        .child("Username", EditView::new().disabled().with_id("username"))
-                        .child("URL", EditView::new().disabled().with_id("url"))
+                        .child("Title", EditView::new().disabled().with_name("title"))
+                        .child("Username", EditView::new().disabled().with_name("username"))
+                        .child("URL", EditView::new().disabled().with_name("url"))
                         .child(
                             "Password",
                             LinearLayout::horizontal()
@@ -312,19 +313,23 @@ fn main() {
                                     EditView::new()
                                         .disabled()
                                         .secret()
-                                        .with_id("password")
+                                        .with_name("password")
                                         .full_width(),
                                 )
                                 .child(
                                     Button::new("Show", move |siv| {
                                         db_ref_for_reveal.reveal_password(siv)
                                     })
-                                    .with_id("show"),
+                                    .with_name("show"),
                                 )
                                 .full_width(),
                         )
-                        .child("Notes", TextArea::new().disabled().with_id("notes"))
+                        .child(
+                            "Notes",
+                            TextArea::new().disabled().with_name("notes").full_height(),
+                        )
                         .full_width()
+                        .full_height()
                         .scrollable(),
                 ))
                 .full_width()

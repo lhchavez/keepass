@@ -5,7 +5,6 @@ extern crate regex;
 extern crate sxd_document;
 
 use crypto::digest::Digest;
-use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::ErrorKind;
@@ -393,7 +392,7 @@ impl Database {
             Result::Err(err) => {
                 return Result::Err(::std::io::Error::new(
                     ErrorKind::InvalidData,
-                    err.description(),
+                    err.to_string(),
                 ));
             }
             Result::Ok(s) => s,
